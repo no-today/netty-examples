@@ -12,11 +12,14 @@ import io.netty.handler.logging.LoggingHandler;
 import lombok.extern.slf4j.Slf4j;
 import netty.examples.SocketClient;
 import netty.examples.commons.handler.ReconnectHandler;
+import netty.examples.commons.protocol.GsonUtils;
 import netty.examples.commons.protocol.RemotingCommand;
 import netty.examples.commons.protocol.RemotingCommandDecoder;
 import netty.examples.commons.protocol.RemotingCommandEncoder;
 import netty.examples.commons.retry.DefaultRetryPolicy;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -94,40 +97,33 @@ public class StreamSocketClient implements SocketClient {
 
     // 半包
     private void half() {
-        byte[] body = generateContent((int) (Math.random() * 1000)).getBytes();
-        RemotingCommand command = new RemotingCommand((short) 1, (short) 0, 0, generateSequence(), body);
+        RemotingCommand command = RemotingCommand.createRequestCommand(1001, generateContent().getBytes(), Map.of(generateContent(), generateContent(), generateContent(), generateContent(), generateContent(), generateContent()));
+        byte[] encodeJson = GsonUtils.encode(command);
 
-        channel.writeAndFlush(Unpooled.buffer(2).writeInt(RemotingCommand.MAGIC_CODE));
-        channel.writeAndFlush(Unpooled.buffer(2).writeShort(command.getVersion()));
-        channel.writeAndFlush(Unpooled.buffer(4).writeShort(command.getTerminal()));
-        sleep(100);
-        channel.writeAndFlush(Unpooled.buffer(4).writeInt(command.getType()));
-        channel.writeAndFlush(Unpooled.buffer(4).writeLong(command.getSequence()));
-        channel.writeAndFlush(Unpooled.buffer(4).writeInt(command.getLength()));
-        sleep(100);
-        channel.writeAndFlush(Unpooled.buffer(command.getLength()).writeBytes(command.getBody()));
-    }
+        byte[] bytes1 = Arrays.copyOfRange(encodeJson, 0, encodeJson.length / 2);
+        byte[] bytes2 = Arrays.copyOfRange(encodeJson, encodeJson.length / 2, encodeJson.length);
 
-    private Long generateSequence() {
-        return ((Double) Math.ceil((Math.random() * 1000000000000000000L))).longValue();
+        channel.writeAndFlush(Unpooled.buffer(4).writeInt(RemotingCommand.MAGIC_CODE));
+        channel.writeAndFlush(Unpooled.buffer(4).writeInt(encodeJson.length));
+        channel.writeAndFlush(Unpooled.buffer(bytes1.length).writeBytes(bytes1));
+        sleep(500);
+        channel.writeAndFlush(Unpooled.buffer(bytes2.length).writeBytes(bytes2));
     }
 
     // 粘包
     private void sticky() {
-        byte[] body1 = generateContent((int) (Math.random() * 1000)).getBytes();
-        RemotingCommand command1 = new RemotingCommand((short) 2, (short) 1, 0, generateSequence(), body1);
+        byte[] body1 = generateContent().getBytes();
+        RemotingCommand cmd1 = RemotingCommand.createRequestCommand(1001, body1, Map.of(generateContent(), generateContent(), generateContent(), generateContent(), generateContent(), generateContent()));
 
-        byte[] body2 = generateContent((int) (Math.random() * 1000)).getBytes();
-        RemotingCommand command2 = new RemotingCommand((short) 2, (short) 2, 0, generateSequence(), body2);
+        byte[] body2 = generateContent().getBytes();
+        RemotingCommand cmd2 = RemotingCommand.createRequestCommand(1001, body2, Map.of(generateContent(), generateContent(), generateContent(), generateContent()));
 
-        channel.write(command1);
-        channel.writeAndFlush(command2);
+        channel.write(cmd1);
+        channel.writeAndFlush(cmd2);
     }
 
-    private String generateContent(int count) {
-        StringBuilder content = new StringBuilder(UUID.randomUUID().toString());
-        while (--count > 0) content.append(UUID.randomUUID());
-        return content.toString();
+    private String generateContent() {
+        return UUID.randomUUID().toString();
     }
 
     @Override
