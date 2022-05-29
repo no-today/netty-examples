@@ -15,7 +15,7 @@ public class RemotingCommandDecoder extends LengthFieldBasedFrameDecoder {
     public static final int MAX_FRAME_LENGTH = 4194304; // as 512kb
 
     public RemotingCommandDecoder() {
-        super(MAX_FRAME_LENGTH, 20, 4, 0, 0);
+        super(MAX_FRAME_LENGTH, 4, 4, 0, 0);
     }
 
     @Override
