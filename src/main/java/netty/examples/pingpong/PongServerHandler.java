@@ -47,8 +47,9 @@ public class PongServerHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         ByteBuf in = (ByteBuf) msg;
-        log.info("Channel Read: {}", in.toString(CharsetUtil.UTF_8));
-        ctx.writeAndFlush(Unpooled.copiedBuffer("PONG", CharsetUtil.UTF_8));
+        String[] split = in.toString(CharsetUtil.UTF_8).split(":");
+        log.info("Channel Read: {}, Last RTT: {}", split[0], split[2]);
+        ctx.writeAndFlush(Unpooled.copiedBuffer("PONG:" + split[1], CharsetUtil.UTF_8));
     }
 
     @Override
