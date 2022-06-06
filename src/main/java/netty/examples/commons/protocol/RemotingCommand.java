@@ -4,8 +4,6 @@ import io.netty.buffer.ByteBuf;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,6 +43,7 @@ public class RemotingCommand {
      * <p>
      * 0: request
      * 1: response
+     * 2: oneway
      */
     private int flag;
 
@@ -93,6 +92,23 @@ public class RemotingCommand {
         this.flag |= 1;
     }
 
+    public void markOneway() {
+        this.flag |= 2;
+    }
+
+    public boolean isRequest() {
+        return (this.flag & 1) == 0;
+    }
+
+    public boolean isOneway() {
+        return (this.flag & 2) == 0;
+    }
+
+    public RemotingCommandType getType() {
+        if (isRequest()) return RemotingCommandType.REQUEST_COMMAND;
+        return RemotingCommandType.RESPONSE_COMMAND;
+    }
+
     public static RemotingCommand createRequestCommand(int code, byte[] body, Map<String, String> extFields) {
         RemotingCommand command = new RemotingCommand();
         command.setReqId(requestId.getAndIncrement());
@@ -117,18 +133,12 @@ public class RemotingCommand {
         return command;
     }
 
+    public static RemotingCommand createResponseCommand(long reqId, int code, String remark) {
+        return createResponseCommand(reqId, code, remark, null, null);
+    }
+
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("RemotingCommand{");
-        sb.append("reqId=").append(reqId);
-        sb.append(", version=").append(version);
-        sb.append(", terminal=").append(terminal);
-        sb.append(", flag=").append(flag);
-        sb.append(", code=").append(code);
-        sb.append(", remark='").append(remark).append('\'');
-        sb.append(", body=").append(new String(body, StandardCharsets.UTF_8));
-        sb.append(", extFields=").append(extFields);
-        sb.append('}');
-        return sb.toString();
+        return GsonUtils.toJsonString(this);
     }
 }
